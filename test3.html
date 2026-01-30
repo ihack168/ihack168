@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🏠 凌群社宅 AI 顧問 (多模態整合版)</title>
+    <title>🏠 凌群社宅 AI 顧問 (PDF+圖片版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         #chat-box { height: calc(100vh - 220px); scrollbar-width: thin; }
-        .message-bubble { max-width: 85%; word-wrap: break-word; }
+        .message-bubble { max-width: 85%; word-wrap: break-word; line-height: 1.6; }
         .image-preview { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 2px solid #3b82f6; }
         #chat-box::-webkit-scrollbar { width: 4px; }
         #chat-box::-webkit-scrollbar-thumb { background-color: #e2e8f0; border-radius: 10px; }
@@ -17,13 +17,13 @@
 
     <header class="bg-blue-900 text-white p-4 shadow-md text-center flex-shrink-0">
         <h1 class="text-xl font-bold tracking-wider">凌群社宅 AI 顧問</h1>
-        <p class="text-xs text-blue-200 mt-1">AnythingLLM 連線模式 · 支援 PDF 與圖片</p>
+        <p class="text-xs text-blue-200 mt-1 italic">透過 AnythingLLM 連線 · 支援 PDF 檢索與圖片分析</p>
     </header>
 
     <main id="chat-box" class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
         <div class="flex justify-start">
-            <div class="bg-white border p-3 rounded-2xl rounded-tl-none shadow-sm message-bubble">
-                您好！我已準備好為您服務。您可以詢問 PDF 內的社宅規章，或是上傳修繕照片讓我查看。
+            <div class="bg-white border p-3 rounded-2xl rounded-tl-none shadow-sm message-bubble text-gray-700">
+                您好！我已與林口主機連線。您可以問我關於 **PDF 合約** 的內容，或上傳 **現場照片** 讓我辨識。
             </div>
         </div>
     </main>
@@ -33,7 +33,7 @@
             <img id="img-preview" src="" class="image-preview">
             <button onclick="clearImage()" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center shadow-md">×</button>
         </div>
-        <span class="text-xs text-gray-500 italic">已選取圖片，準備上傳至林口主機...</span>
+        <span class="text-xs text-gray-500 italic font-mono text-blue-500">圖片已就緒...</span>
     </div>
 
     <footer class="p-4 bg-white border-t shadow-inner flex-shrink-0">
@@ -45,7 +45,7 @@
             
             <input type="text" id="user-input" 
                    class="flex-1 border border-gray-300 rounded-full px-5 py-3 focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm"
-                   placeholder="描述圖片或詢問社宅問題..."
+                   placeholder="詢問 PDF 或描述圖片..."
                    onkeypress="if(event.keyCode==13) sendMsg()">
             
             <button onclick="sendMsg()" class="bg-blue-700 hover:bg-blue-800 text-white font-bold px-6 py-3 rounded-full shadow-md transition-all active:scale-95">
@@ -57,16 +57,17 @@
     <script>
         let currentImageBase64 = null;
 
+        // 處理圖片選擇
         function handleFile(input) {
             const file = input.files[0];
             if (file) {
                 if (file.size > 5 * 1024 * 1024) {
-                    alert("檔案太大，請上傳小於 5MB 的圖片");
+                    alert("圖片太大，請上傳 5MB 以下的照片。");
                     return;
                 }
                 const reader = new FileReader();
                 reader.onload = (e) => {
-                    currentImageBase64 = e.target.result;
+                    currentImageBase64 = e.target.result; // 這是 data:image/jpeg;base64,...
                     document.getElementById('img-preview').src = currentImageBase64;
                     document.getElementById('preview-bar').classList.remove('hidden');
                 };
@@ -74,6 +75,7 @@
             }
         }
 
+        // 清除預覽
         function clearImage() {
             currentImageBase64 = null;
             document.getElementById('image-input').value = '';
@@ -87,28 +89,29 @@
             
             if (!msg && !currentImageBase64) return;
 
-            // 1. 顯示使用者訊息
+            // 1. 顯示使用者發送的內容
             let userMsgHTML = `<div class="flex justify-end"><div class="bg-blue-600 text-white p-3 rounded-2xl rounded-tr-none shadow-md message-bubble flex flex-col items-end">`;
             if (currentImageBase64) {
                 userMsgHTML += `<img src="${currentImageBase64}" class="rounded-lg mb-2 max-w-[200px] border border-blue-400">`;
             }
             if (msg) userMsgHTML += `<div>${msg}</div>`;
-            else userMsgHTML += `<div>請分析此圖片內容</div>`;
+            else userMsgHTML += `<div>請分析此圖片</div>`;
             userMsgHTML += `</div></div>`;
             chatBox.innerHTML += userMsgHTML;
             
-            const tempMsg = msg || "請詳細分析此圖片內容";
+            const tempMsg = msg || "請詳細描述並分析這張圖片內容。";
             const tempImg = currentImageBase64;
             
             input.value = '';
             clearImage();
             
             const loadingId = "loading-" + Date.now();
-            chatBox.innerHTML += `<div id="${loadingId}" class="flex justify-start text-gray-400 p-2 animate-pulse text-sm italic">AI 正在讀取資料並思考中...</div>`;
+            chatBox.innerHTML += `<div id="${loadingId}" class="flex justify-start text-gray-400 p-2 animate-pulse text-sm italic font-mono">AI 思考中...</div>`;
             chatBox.scrollTop = chatBox.scrollHeight;
 
             try {
-                // 修正重點：AnythingLLM 的 API 附件格式需完整 DataURL
+                // 2. 呼叫 AnythingLLM API
+                // 我們在這裡同時放 'data' 和 'base64' 欄位，確保模型能讀到
                 const response = await fetch("https://yearly-screens-kurt-hills.trycloudflare.com/api/v1/workspace/ihack168/chat", {
                     method: 'POST',
                     headers: {
@@ -117,10 +120,11 @@
                     },
                     body: JSON.stringify({
                         message: tempMsg,
-                        mode: 'chat', // 這裡用 chat 模式才會觸發 RAG 讀取 PDF
+                        mode: 'chat',
                         attachments: tempImg ? [{
-                            data: tempImg, // 直接傳入 data:image/... base64 全字串
-                            mimeType: "image/jpeg" 
+                            data: tempImg, // 某些版本需要 data
+                            base64: tempImg, // 某些版本需要 base64
+                            mimeType: "image/jpeg"
                         }] : []
                     })
                 });
@@ -128,19 +132,19 @@
                 const data = await response.json();
                 document.getElementById(loadingId).remove();
 
-                // 修正：AnythingLLM 回傳的文字欄位通常是 textResponse 或 content
-                const finalReply = data.textResponse || data.content || "抱歉，我暫時無法處理這個請求。";
+                // 3. 解析回覆文字
+                const finalReply = data.textResponse || data.content || (data.error ? "系統錯誤: " + data.error : "AI 無法處理此請求。");
 
                 chatBox.innerHTML += `
                     <div class="flex justify-start">
-                        <div class="bg-white border border-gray-200 p-3 rounded-2xl rounded-tl-none shadow-sm message-bubble text-gray-800 leading-relaxed">
+                        <div class="bg-white border border-gray-200 p-3 rounded-2xl rounded-tl-none shadow-sm message-bubble text-gray-800">
                             ${finalReply.replace(/\n/g, '<br>')}
                         </div>
                     </div>
                 `;
             } catch (e) {
                 if(document.getElementById(loadingId)) document.getElementById(loadingId).remove();
-                chatBox.innerHTML += `<div class="text-red-500 text-xs p-2 italic">連線失敗：請確認林口主機與 AnythingLLM 是否在線。</div>`;
+                chatBox.innerHTML += `<div class="text-red-500 text-xs p-2 italic text-center">連線失敗，請確認林口主機與 Cloudflare 是否正常工作。</div>`;
                 console.error("API Error:", e);
             }
             chatBox.scrollTop = chatBox.scrollHeight;
