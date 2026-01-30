@@ -41,8 +41,7 @@
             chatBox.innerHTML += `<div class="flex justify-end"><div class="bg-blue-600 text-white p-3 rounded-xl shadow-sm">${msg}</div></div>`;
             
             // 🚀 指令升級：要求 AI 絕對不要輸出 [CONTEXT] 或推理
-            const finalMsg = "請「只」輸出最終答案字串，絕對嚴禁輸出 [CONTEXT]、推理過程或任何英文。問題：" + msg;
-            
+
             input.value = '';
             const loadingId = "load-" + Date.now();
             chatBox.innerHTML += `<div id="${loadingId}" class="flex justify-start text-gray-400 p-2 animate-pulse text-sm italic">精準檢索中...</div>`;
@@ -93,3 +92,4 @@
     </script>
 </body>
 </html>
+
