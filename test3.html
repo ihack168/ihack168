@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🏠 凌群社宅 AI 顧問 (多模態修正版)</title>
+    <title>🏠 凌群社宅 AI 顧問 (相容性強化版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         #chat-box { height: calc(100vh - 220px); scrollbar-width: thin; }
-        .message-bubble { max-width: 85%; word-wrap: break-word; line-height: 1.6; }
-        .image-preview { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 2px solid #3b82f6; }
+        .message-bubble { max-width: 85%; word-wrap: break-word; }
         #chat-box::-webkit-scrollbar { width: 4px; }
         #chat-box::-webkit-scrollbar-thumb { background-color: #e2e8f0; border-radius: 10px; }
     </style>
@@ -17,38 +16,24 @@
 
     <header class="bg-blue-900 text-white p-4 shadow-md text-center flex-shrink-0">
         <h1 class="text-xl font-bold tracking-wider">凌群社宅 AI 顧問</h1>
-        <p class="text-xs text-blue-200 mt-1">AnythingLLM 連線模式 · 格式優化版</p>
+        <p class="text-xs text-blue-200 mt-1">針對 500/400 錯誤優化結構</p>
     </header>
 
-    <main id="chat-box" class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
-        <div class="flex justify-start">
-            <div class="bg-white border p-3 rounded-2xl rounded-tl-none shadow-sm message-bubble">
-                連線已重置。請試試看同時輸入文字與圖片，或是單純詢問 PDF 問題。
-            </div>
-        </div>
-    </main>
+    <main id="chat-box" class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50"></main>
 
     <div id="preview-bar" class="hidden px-4 py-2 bg-white border-t flex items-center gap-2 flex-shrink-0">
-        <div class="relative">
-            <img id="img-preview" src="" class="image-preview">
-            <button onclick="clearImage()" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center shadow-md">×</button>
-        </div>
-        <span class="text-xs text-gray-500 italic">圖片就緒...</span>
+        <img id="img-preview" src="" class="w-12 h-12 object-cover rounded border">
+        <span class="text-xs text-blue-500 font-mono">圖片已編碼...</span>
+        <button onclick="clearImage()" class="ml-auto text-red-500 text-sm">取消</button>
     </div>
 
     <footer class="p-4 bg-white border-t shadow-inner flex-shrink-0">
-        <div class="max-w-4xl mx-auto flex gap-2 items-center">
-            <label class="cursor-pointer bg-gray-100 hover:bg-gray-200 p-3 rounded-full border border-gray-200 shadow-sm">
-                <span class="text-xl px-1">📷</span>
-                <input type="file" id="image-input" class="hidden" accept="image/*" onchange="handleFile(this)">
+        <div class="max-w-4xl mx-auto flex gap-2">
+            <label class="cursor-pointer bg-gray-100 p-3 rounded-full border">
+                📷 <input type="file" id="image-input" class="hidden" accept="image/*" onchange="handleFile(this)">
             </label>
-            <input type="text" id="user-input" 
-                   class="flex-1 border border-gray-300 rounded-full px-5 py-3 outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
-                   placeholder="詢問或描述..."
-                   onkeypress="if(event.keyCode==13) sendMsg()">
-            <button onclick="sendMsg()" class="bg-blue-700 hover:bg-blue-800 text-white font-bold px-6 py-3 rounded-full shadow-md active:scale-95 transition-all">
-                發送
-            </button>
+            <input type="text" id="user-input" class="flex-1 border rounded-full px-5 py-3 outline-none" placeholder="輸入問題..." onkeypress="if(event.keyCode==13) sendMsg()">
+            <button onclick="sendMsg()" class="bg-blue-700 text-white px-6 py-3 rounded-full">發送</button>
         </div>
     </footer>
 
@@ -80,28 +65,25 @@
             const msg = input.value.trim();
             if (!msg && !currentImageBase64) return;
 
-            // 顯示使用者訊息
-            let userHTML = `<div class="flex justify-end"><div class="bg-blue-600 text-white p-3 rounded-2xl rounded-tr-none shadow-md message-bubble flex flex-col items-end">`;
-            if (currentImageBase64) userHTML += `<img src="${currentImageBase64}" class="rounded-lg mb-2 max-w-[180px]">`;
-            userHTML += `<div>${msg || "分析此圖片"}</div></div></div>`;
-            chatBox.innerHTML += userHTML;
-            
+            // 介面回饋
+            chatBox.innerHTML += `<div class="flex justify-end"><div class="bg-blue-600 text-white p-3 rounded-xl">${msg || "圖片分析"}</div></div>`;
             const tempMsg = msg || "請詳細分析圖片內容";
             const tempImg = currentImageBase64;
             
             input.value = '';
             clearImage();
-            const loadingId = "loading-" + Date.now();
-            chatBox.innerHTML += `<div id="${loadingId}" class="flex justify-start text-gray-400 p-2 animate-pulse text-sm">AI 處理中...</div>`;
+            const loadingId = "load-" + Date.now();
+            chatBox.innerHTML += `<div id="${loadingId}" class="flex justify-start text-gray-400 p-2 animate-pulse text-sm">連線至林口主機中...</div>`;
             chatBox.scrollTop = chatBox.scrollHeight;
 
             try {
-                // 🚀 關鍵修正：這是 AnythingLLM v1.x 之後最標準的附件格式
+                // 🚀 終極相容格式：同時放 base64 欄位，這在某些後端環境更穩定
                 const payload = {
                     message: tempMsg,
                     mode: 'chat',
                     attachments: tempImg ? [{
-                        data: tempImg // 必須包含 "data:image/jpeg;base64,..."
+                        base64: tempImg, // 某些版本吃 base64
+                        mime: "image/jpeg"
                     }] : []
                 };
 
@@ -117,22 +99,17 @@
                 const data = await response.json();
                 document.getElementById(loadingId).remove();
 
-                if (response.status !== 200) {
-                    throw new Error(`伺服器回傳錯誤 ${response.status}: ${JSON.stringify(data)}`);
-                }
+                // 處理 AnythingLLM 那種包裹在 JSON 裡的文字回覆
+                const replyText = data.textResponse || data.content || (data.error ? "模型回報: " + data.error : "未知回覆");
 
-                const finalReply = data.textResponse || data.content || "無法解析內容";
                 chatBox.innerHTML += `
                     <div class="flex justify-start">
-                        <div class="bg-white border border-gray-200 p-3 rounded-2xl rounded-tl-none shadow-sm message-bubble text-gray-800">
-                            ${finalReply.replace(/\n/g, '<br>')}
-                        </div>
+                        <div class="bg-white border p-3 rounded-xl text-gray-800 shadow-sm">${replyText.replace(/\n/g, '<br>')}</div>
                     </div>
                 `;
             } catch (e) {
                 if(document.getElementById(loadingId)) document.getElementById(loadingId).remove();
-                chatBox.innerHTML += `<div class="text-red-500 text-xs p-2 italic">發生錯誤：${e.message}</div>`;
-                console.error(e);
+                chatBox.innerHTML += `<div class="text-red-500 text-xs p-2">系統錯誤：${e.message}</div>`;
             }
             chatBox.scrollTop = chatBox.scrollHeight;
         }
