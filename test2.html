@@ -21,7 +21,7 @@
     <main id="chat-box" class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
         <div class="flex justify-start">
             <div class="bg-white border p-3 rounded-2xl rounded-tl-none shadow-sm message-bubble">
-                您好！直連模式已啟動。請上傳照片或輸入問題，我將直接透過 Google 雲端為您分析。
+                您好！模型路徑已修正。請再次嘗試上傳照片或輸入問題。
             </div>
         </div>
     </main>
@@ -51,7 +51,6 @@
     </footer>
 
     <script>
-        // 請確保這裡只有 AIza... 開頭的字串，前後不要有空格
         const GEMINI_API_KEY = "AIzaSyAQkaFEQRJEIVgw82_vSrbXgoM35W3B9Gg"; 
         
         let currentImageBase64 = null;
@@ -83,7 +82,6 @@
             const msg = input.value.trim();
             if (!msg && !currentImageBase64) return;
 
-            // 顯示使用者訊息
             let userMsgHTML = `<div class="flex justify-end"><div class="bg-blue-600 text-white p-3 rounded-2xl rounded-tr-none shadow-md message-bubble">`;
             if (currentImageBase64) userMsgHTML += `<img src="${currentImageBase64}" class="rounded-lg mb-2 max-w-[240px]">`;
             userMsgHTML += `<div>${msg || "分析此圖片"}</div></div></div>`;
@@ -100,7 +98,6 @@
             chatBox.scrollTop = chatBox.scrollHeight;
 
             try {
-                // 構造請求
                 const payload = {
                     contents: [{
                         parts: [{ text: tempMsg }]
@@ -116,7 +113,8 @@
                     });
                 }
 
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+                // 修正重點：使用 gemini-1.5-flash-latest
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
