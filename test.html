@@ -38,9 +38,12 @@
             const msg = input.value.trim();
             if (!msg) return;
 
+            // 1. 顯示使用者訊息
             chatBox.innerHTML += `<div class="flex justify-end"><div class="bg-blue-600 text-white p-3 rounded-xl shadow-sm">${msg}</div></div>`;
             
-            // 🚀 指令升級：要求 AI 絕對不要輸出 [CONTEXT] 或推理
+            // 🚀 修正點：必須定義 finalMsg，API 才能讀取你的問題
+            // 這裡保留最強力的「直接回答」指令，否則 AI 又會開始講英文
+            const finalMsg = "請「只」輸出最終答案字串，嚴禁輸出推理過程或任何英文。問題：" + msg;
 
             input.value = '';
             const loadingId = "load-" + Date.now();
@@ -54,6 +57,7 @@
                         'Authorization': 'Bearer BG4Q4RY-TXQ44CT-PX939QZ-8XGJRBB',
                         'Content-Type': 'application/json'
                     },
+                    // 這裡引用了上面定義的 finalMsg
                     body: JSON.stringify({ message: finalMsg, mode: 'chat' })
                 });
 
@@ -63,14 +67,12 @@
                 let reply = data.textResponse || data.content || "";
 
                 // --- 🛡️ 針對 AnythingLLM Citations 的過濾邏輯 ---
-                // 如果內容包含 [CONTEXT] 或 The answer is，我們只抓最後一段
                 if (reply.includes("[CONTEXT]") || reply.includes("The answer is")) {
-                    // 尋找最後一個句號或冒號之後的內容
                     const parts = reply.split(/The answer is[:：]?/i);
                     reply = parts.length > 1 ? parts.pop() : reply.split('\n').pop();
                 }
 
-                // 再次確保濾掉開頭殘留的英文
+                // 再次確保濾掉開頭殘留的英文，保留純中文答案
                 const chineseMatch = reply.match(/[\u4e00-\u9fa5]/);
                 if (chineseMatch) {
                     reply = reply.substring(reply.indexOf(chineseMatch[0]));
@@ -86,10 +88,10 @@
             } catch (e) {
                 if(document.getElementById(loadingId)) document.getElementById(loadingId).remove();
                 chatBox.innerHTML += `<div class="text-red-500 text-xs p-2">連線失敗。</div>`;
+                console.error(e);
             }
             chatBox.scrollTop = chatBox.scrollHeight;
         }
     </script>
 </body>
 </html>
-
