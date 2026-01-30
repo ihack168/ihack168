@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏠 凌群社宅 AI 顧問 (直連版)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        #chat-box { height: calc(100vh - 220px); scrollbar-width: thin; }
+        .message-bubble { max-width: 85%; word-wrap: break-word; }
+        .image-preview { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 2px solid #3b82f6; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900 h-screen flex flex-col">
+
+    <header class="bg-blue-900 text-white p-4 shadow-md text-center">
+        <h1 class="text-xl font-bold tracking-wider">凌群社宅 AI 顧問</h1>
+        <p class="text-xs text-blue-200 mt-1">Google Gemini 2.5 Flash 直連模式 (支援圖文)</p>
+    </header>
+
+    <main id="chat-box" class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
+        <div class="flex justify-start">
+            <div class="bg-white border p-3 rounded-2xl rounded-tl-none shadow-sm message-bubble">
+                您好！我是您的 AI 顧問。現在我是**直連 Google 雲端**，分析圖片能力最強！
+                請上傳照片或輸入問題，我會即時為您服務。
+            </div>
+        </div>
+    </main>
+
+    <div id="preview-bar" class="hidden px-4 py-2 bg-white border-t flex items-center gap-2">
+        <div class="relative">
+            <img id="img-preview" src="" class="image-preview">
+            <button onclick="clearImage()" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center shadow-md">×</button>
+        </div>
+        <span class="text-xs text-gray-500 italic">準備分析圖片...</span>
+    </div>
+
+    <footer class="p-4 bg-white border-t shadow-inner">
+        <div class="max-w-4xl mx-auto flex gap-2 items-center">
+            <label class="cursor-pointer bg-gray-100 hover:bg-gray-200 p-3 rounded-full transition-all flex-shrink-0 border border-gray-200">
+                <span class="text-xl">📷</span>
+                <input type="file" id="image-input" class="hidden" accept="image/*" onchange="handleFile(this)">
+            </label>
+            <input type="text" id="user-input" 
+                   class="flex-1 border border-gray-300 rounded-full px-5 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                   placeholder="請輸入問題或描述圖片..."
+                   onkeypress="if(event.keyCode==13) sendMsg()">
+            <button onclick="sendMsg()" class="bg-blue-700 hover:bg-blue-800 text-white font-bold px-6 py-3 rounded-full shadow-md transition-all">
+                發送
+            </button>
+        </div>
+    </footer>
+
+    <script>
+        // 【重要】在此填入你的 Google Gemini API Key
+        const GEMINI_API_KEY = "這裡貼上你的API_KEY"; 
+        
+        let currentImageBase64 = null;
+        let mimeType = "image/jpeg";
+
+        function handleFile(input) {
+            const file = input.files[0];
+            if (file) {
+                mimeType = file.type;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    currentImageBase64 = e.target.result;
+                    document.getElementById('img-preview').src = currentImageBase64;
+                    document.getElementById('preview-bar').classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function clearImage() {
+            currentImageBase64 = null;
+            document.getElementById('image-input').value = '';
+            document.getElementById('preview-bar').classList.add('hidden');
+        }
+
+        async function sendMsg() {
+            const input = document.getElementById('user-input');
+            const chatBox = document.getElementById('chat-box');
+            const msg = input.value.trim();
+            if (!msg && !currentImageBase64) return;
+
+            // 1. 顯示使用者訊息
+            let userMsgHTML = `<div class="flex justify-end"><div class="bg-blue-600 text-white p-3 rounded-2xl rounded-tr-none shadow-md message-bubble">`;
+            if (currentImageBase64) userMsgHTML += `<img src="${currentImageBase64}" class="rounded-lg mb-2 max-w-[240px]">`;
+            userMsgHTML += `<div>${msg || "分析此圖片"}</div></div></div>`;
+            chatBox.innerHTML += userMsgHTML;
+            
+            const tempMsg = msg || "請詳細描述並分析這張圖片內容";
+            const tempImg = currentImageBase64;
+            
+            input.value = '';
+            clearImage();
+            
+            const loadingId = "loading-" + Date.now();
+            chatBox.innerHTML += `<div id="${loadingId}" class="flex justify-start text-gray-400 p-2 animate-pulse text-sm">Gemini 思考中...</div>`;
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            try {
+                // 2. 構造 Gemini 官方 API 請求
+                const contents = [{
+                    parts: [
+                        { text: tempMsg }
+                    ]
+                }];
+
+                if (tempImg) {
+                    contents[0].parts.push({
+                        inline_data: {
+                            mime_type: mimeType,
+                            data: tempImg.split(',')[1]
+                        }
+                    });
+                }
+
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents })
+                });
+
+                const data = await response.json();
+                document.getElementById(loadingId).remove();
+
+                // 3. 解析 Google 回傳格式
+                const finalReply = data.candidates[0].content.parts[0].text;
+
+                chatBox.innerHTML += `
+                    <div class="flex justify-start">
+                        <div class="bg-white border p-3 rounded-2xl rounded-tl-none shadow-sm message-bubble text-gray-800 leading-relaxed">
+                            ${finalReply.replace(/\n/g, '<br>')}
+                        </div>
+                    </div>
+                `;
+            } catch (e) {
+                if(document.getElementById(loadingId)) document.getElementById(loadingId).remove();
+                chatBox.innerHTML += `<div class="text-red-500 text-xs p-2">連線失敗：請檢查 API Key 是否正確。</div>`;
+                console.error(e);
+            }
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+    </script>
+</body>
+</html>
