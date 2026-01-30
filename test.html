@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🏠 凌群社宅 AI 顧問 (純文字版)</title>
+    <title>🏠 凌群社宅 AI 顧問</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         #chat-box { height: calc(100vh - 160px); scrollbar-width: thin; }
@@ -16,25 +16,17 @@
 
     <header class="bg-blue-900 text-white p-4 shadow-md text-center flex-shrink-0">
         <h1 class="text-xl font-bold tracking-wider">凌群社宅 AI 顧問</h1>
-        <p class="text-xs text-blue-200 mt-1">純文字對話模式 · 答案直接化</p>
+        <p class="text-xs text-blue-200 mt-1">極簡直接模式 · 已強化回覆過濾</p>
     </header>
 
-    <main id="chat-box" class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
-        <div class="flex justify-start">
-            <div class="bg-white border p-4 rounded-2xl rounded-tl-none shadow-sm message-bubble text-gray-700">
-                您好！我是凌群社宅 AI 顧問。我已經優化為**直接回答模式**。<br>
-                請輸入您的問題，我會直接給您答案，不再顯示冗長的分析過程。
-            </div>
-        </div>
-    </main>
+    <main id="chat-box" class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50"></main>
 
     <footer class="p-4 bg-white border-t shadow-inner flex-shrink-0">
         <div class="max-w-4xl mx-auto flex gap-2 items-center">
             <input type="text" id="user-input" 
-                   class="flex-1 border border-gray-300 rounded-full px-6 py-3 focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm"
-                   placeholder="請輸入關於社宅規章或合約的問題..."
+                   class="flex-1 border border-gray-300 rounded-full px-6 py-3 focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
+                   placeholder="請輸入問題..."
                    onkeypress="if(event.keyCode==13) sendMsg()">
-            
             <button onclick="sendMsg()" class="bg-blue-700 hover:bg-blue-800 text-white font-bold px-8 py-3 rounded-full shadow-md active:scale-95 transition-all">
                 發送
             </button>
@@ -46,24 +38,16 @@
             const input = document.getElementById('user-input');
             const chatBox = document.getElementById('chat-box');
             const msg = input.value.trim();
-            
             if (!msg) return;
 
-            // 1. 顯示使用者訊息
-            chatBox.innerHTML += `
-                <div class="flex justify-end">
-                    <div class="bg-blue-600 text-white p-3 rounded-2xl rounded-tr-none shadow-md message-bubble">
-                        ${msg}
-                    </div>
-                </div>
-            `;
+            chatBox.innerHTML += `<div class="flex justify-end"><div class="bg-blue-600 text-white p-3 rounded-2xl rounded-tr-none shadow-md"> ${msg} </div></div>`;
             
-            // 強制直接回答指令
-            const finalMsg = "【指令：請直接回答答案結論，禁止輸出任何分析過程或推理步驟。】\n\n" + msg;
+            // 強化指令
+            const finalMsg = "請「僅僅回傳答案本身」，禁止包含任何思考過程、分析步驟、或『The user is asking...』之類的描述。答案要短。問題是：" + msg;
             
             input.value = '';
             const loadingId = "loading-" + Date.now();
-            chatBox.innerHTML += `<div id="${loadingId}" class="flex justify-start text-gray-400 p-2 animate-pulse text-sm italic">正在檢索資料並獲取答案...</div>`;
+            chatBox.innerHTML += `<div id="${loadingId}" class="flex justify-start text-gray-400 p-2 animate-pulse text-sm italic">獲取答案中...</div>`;
             chatBox.scrollTop = chatBox.scrollHeight;
 
             try {
@@ -73,32 +57,38 @@
                         'Authorization': 'Bearer BG4Q4RY-TXQ44CT-PX939QZ-8XGJRBB',
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({
-                        message: finalMsg,
-                        mode: 'chat'
-                    })
+                    body: JSON.stringify({ message: finalMsg, mode: 'chat' })
                 });
 
                 const data = await response.json();
-                
-                const loadingElem = document.getElementById(loadingId);
-                if (loadingElem) loadingElem.remove();
+                document.getElementById(loadingId).remove();
 
-                const finalReply = data.textResponse || data.content || "抱歉，目前無法獲取回覆。";
+                let rawReply = data.textResponse || data.content || "無法獲取回覆。";
+
+                // --- 關鍵過濾邏輯 ---
+                // 如果 AI 還是把思考過程吐出來，我們嘗試抓最後一段話，或者過濾掉特定英文字眼
+                let cleanReply = rawReply;
+                
+                // 排除常見的 AI 思考特徵
+                if (cleanReply.includes("I will provide this exact conclusion")) {
+                    cleanReply = cleanReply.split("I will provide this exact conclusion").pop();
+                } else if (cleanReply.includes("The user is asking")) {
+                    // 如果出現這類字眼，通常答案就在最後一段
+                    const lines = cleanReply.trim().split("\n");
+                    cleanReply = lines[lines.length - 1];
+                }
 
                 chatBox.innerHTML += `
                     <div class="flex justify-start">
-                        <div class="bg-white border border-gray-200 p-4 rounded-2xl rounded-tl-none shadow-sm message-bubble text-gray-800 leading-relaxed">
-                            ${finalReply.replace(/\n/g, '<br>')}
+                        <div class="bg-white border border-gray-200 p-4 rounded-2xl rounded-tl-none shadow-sm message-bubble text-gray-800 font-medium">
+                            ${cleanReply.replace(/\n/g, '<br>')}
                         </div>
                     </div>
                 `;
             } catch (e) {
-                const loadingElem = document.getElementById(loadingId);
-                if (loadingElem) loadingElem.remove();
-                chatBox.innerHTML += `<div class="text-red-500 text-xs p-2">連線失敗，請檢查主機狀態。</div>`;
+                if(document.getElementById(loadingId)) document.getElementById(loadingId).remove();
+                chatBox.innerHTML += `<div class="text-red-500 text-xs p-2">連線失敗。</div>`;
             }
-            
             chatBox.scrollTop = chatBox.scrollHeight;
         }
     </script>
