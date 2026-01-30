@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏠 ihack168 不動產 AI 顧問</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 讓對話視窗可以自動捲動 */
+        #chat-box {
+            height: calc(100vh - 180px);
+            scrollbar-width: thin;
+        }
+        .message-bubble {
+            max-width: 85%;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900 h-screen flex flex-col">
+
+    <header class="bg-blue-900 text-white p-4 shadow-md text-center">
+        <h1 class="text-xl font-bold tracking-wider">ihack168 不動產 AI 諮詢中心</h1>
+        <p class="text-xs text-blue-200 mt-1">RTX 5060 硬體加速 · 2026 專業顧問版</p>
+    </header>
+
+    <main id="chat-box" class="flex-1 overflow-y-auto p-4 space-y-4">
+        <div class="flex justify-start">
+            <div class="bg-white border border-gray-200 p-3 rounded-2xl rounded-tl-none shadow-sm message-bubble">
+                您好！我是您的 **ihack168** AI 助手。我已經準備好為您分析房地產法規、合約或物件資料。請問今天有什麼我可以幫您的？
+            </div>
+        </div>
+    </main>
+
+    <footer class="p-4 bg-white border-t border-gray-200 shadow-inner">
+        <div class="max-w-4xl mx-auto flex gap-2">
+            <input type="text" id="user-input" 
+                   class="flex-1 border border-gray-300 rounded-full px-5 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+                   placeholder="請輸入關於不動產的問題..."
+                   onkeypress="if(event.keyCode==13) sendMsg()">
+            <button onclick="sendMsg()" 
+                    class="bg-blue-700 hover:bg-blue-800 text-white font-bold px-6 py-3 rounded-full transition-all shadow-md">
+                發送
+            </button>
+        </div>
+    </footer>
+
+    <script>
+        async function sendMsg() {
+            const input = document.getElementById('user-input');
+            const chatBox = document.getElementById('chat-box');
+            const msg = input.value.trim();
+            
+            if (!msg) return;
+
+            // 1. 顯示使用者的訊息
+            chatBox.innerHTML += `
+                <div class="flex justify-end">
+                    <div class="bg-blue-600 text-white p-3 rounded-2xl rounded-tr-none shadow-md message-bubble">
+                        ${msg}
+                    </div>
+                </div>
+            `;
+            input.value = '';
+            
+            // 2. 顯示思考中動畫
+            const loadingId = "loading-" + Date.now();
+            chatBox.innerHTML += `
+                <div id="${loadingId}" class="flex justify-start">
+                    <div class="bg-gray-100 text-gray-500 p-3 rounded-2xl rounded-tl-none animate-pulse">
+                        AI 正在調閱資料庫並思考中...
+                    </div>
+                </div>
+            `;
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            try {
+                // 3. 呼叫你林口家裡的 AnythingLLM API
+                const response = await fetch("https://yearly-screens-kurt-hills.trycloudflare.com/api/v1/workspace/ihack168/chat", {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer BG4Q4RY-TXQ44CT-PX939QZ-8XGJRBB',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: msg,
+                        mode: 'chat' // 使用 'chat' 模式會參考你上傳的 PDF 資料
+                    })
+                });
+
+                const data = await response.json();
+                
+                // 移除思考中動畫
+                document.getElementById(loadingId).remove();
+
+                // 4. 解析回傳內容
+                // AnythingLLM 回傳格式通常在 textResponse 欄位
+                let finalReply = data.textResponse || data.content || "抱歉，目前無法取得回應，請確認電腦是否開啟。";
+
+                chatBox.innerHTML += `
+                    <div class="flex justify-start">
+                        <div class="bg-white border border-gray-200 p-3 rounded-2xl rounded-tl-none shadow-sm message-bubble text-gray-800">
+                            ${finalReply.replace(/\n/g, '<br>')}
+                        </div>
+                    </div>
+                `;
+            } catch (e) {
+                if(document.getElementById(loadingId)) document.getElementById(loadingId).remove();
+                chatBox.innerHTML += `
+                    <div class="flex justify-start text-red-500 text-xs italic p-2">
+                        連線異常：請確認您林口家中的電腦已開啟且雲端隧道 (cloudflared) 正在執行。
+                    </div>
+                `;
+                console.error("API Error:", e);
+            }
+            
+            // 捲動到底部
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+    </script>
+</body>
+</html>
