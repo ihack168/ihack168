@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🏠 ihack168 不動產 AI 顧問</title>
+    <title>🏠 凌群不動產 AI 顧問</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* 讓對話視窗可以自動捲動 */
@@ -20,14 +20,14 @@
 <body class="bg-gray-50 text-gray-900 h-screen flex flex-col">
 
     <header class="bg-blue-900 text-white p-4 shadow-md text-center">
-        <h1 class="text-xl font-bold tracking-wider">ihack168 不動產 AI 諮詢中心</h1>
-        <p class="text-xs text-blue-200 mt-1">RTX 5060 硬體加速 · 2026 專業顧問版</p>
+        <h1 class="text-xl font-bold tracking-wider">凌群 不動產 AI 顧問 諮詢中心</h1>
+        <p class="text-xs text-blue-200 mt-1">測試用</p>
     </header>
 
     <main id="chat-box" class="flex-1 overflow-y-auto p-4 space-y-4">
         <div class="flex justify-start">
             <div class="bg-white border border-gray-200 p-3 rounded-2xl rounded-tl-none shadow-sm message-bubble">
-                您好！我是您的 **ihack168** AI 助手。我已經準備好為您分析房地產法規、合約或物件資料。請問今天有什麼我可以幫您的？
+                您好！我是您的 凌群不動產 AI 助手。我已經準備好為您分析房地產法規、合約或物件資料。請問今天有什麼我可以幫您的？
             </div>
         </div>
     </main>
@@ -108,7 +108,7 @@
                 if(document.getElementById(loadingId)) document.getElementById(loadingId).remove();
                 chatBox.innerHTML += `
                     <div class="flex justify-start text-red-500 text-xs italic p-2">
-                        連線異常：請確認您林口家中的電腦已開啟且雲端隧道 (cloudflared) 正在執行。
+                        連線異常：請確認電腦已開啟且雲端隧道 (cloudflared) 正在執行。
                     </div>
                 `;
                 console.error("API Error:", e);
@@ -119,4 +119,5 @@
         }
     </script>
 </body>
+
 </html>
