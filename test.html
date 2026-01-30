@@ -16,7 +16,7 @@
 
     <header class="bg-blue-900 text-white p-4 shadow-md text-center">
         <h1 class="text-xl font-bold tracking-wider">凌群社宅 AI 顧問</h1>
-        <p class="text-xs text-blue-200 mt-1 italic">終極過濾模式：僅保留最終答案</p>
+        <p class="text-xs text-blue-200 mt-1 italic">API 穩定連接模式</p>
     </header>
 
     <main id="chat-box" class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50"></main>
@@ -38,16 +38,14 @@
             const msg = input.value.trim();
             if (!msg) return;
 
-            // 1. 顯示使用者訊息
             chatBox.innerHTML += `<div class="flex justify-end"><div class="bg-blue-600 text-white p-3 rounded-xl shadow-sm">${msg}</div></div>`;
             
-            // 🚀 修正點：必須定義 finalMsg，API 才能讀取你的問題
-            // 這裡保留最強力的「直接回答」指令，否則 AI 又會開始講英文
-            const finalMsg = "請「只」輸出最終答案字串，嚴禁輸出推理過程或任何英文。問題：" + msg;
+            // 這裡保留 finalMsg 的定義，並要求簡短回答
+            const finalMsg = "請直接給出答案，不要分析。問題：" + msg;
 
             input.value = '';
             const loadingId = "load-" + Date.now();
-            chatBox.innerHTML += `<div id="${loadingId}" class="flex justify-start text-gray-400 p-2 animate-pulse text-sm italic">精準檢索中...</div>`;
+            chatBox.innerHTML += `<div id="${loadingId}" class="flex justify-start text-gray-400 p-2 animate-pulse text-sm italic">連線主機中...</div>`;
             chatBox.scrollTop = chatBox.scrollHeight;
 
             try {
@@ -57,22 +55,27 @@
                         'Authorization': 'Bearer BG4Q4RY-TXQ44CT-PX939QZ-8XGJRBB',
                         'Content-Type': 'application/json'
                     },
-                    // 這裡引用了上面定義的 finalMsg
                     body: JSON.stringify({ message: finalMsg, mode: 'chat' })
                 });
 
                 const data = await response.json();
+                console.log("API原始回傳內容:", data); // 在瀏覽器按 F12 可以看到這行，方便除錯
+
                 document.getElementById(loadingId).remove();
 
-                let reply = data.textResponse || data.content || "";
+                // 🚀 改進的解析邏輯：逐個嘗試 AnythingLLM 可能回傳的欄位
+                let reply = data.textResponse || data.content || data.response || (data.sources ? "找到資料但無法生成文字" : "");
+                
+                // 如果是物件格式，嘗試轉成字串
+                if (typeof reply === 'object') reply = JSON.stringify(reply);
 
-                // --- 🛡️ 針對 AnythingLLM Citations 的過濾邏輯 ---
+                // --- 🛡️ 過濾雜訊 ---
                 if (reply.includes("[CONTEXT]") || reply.includes("The answer is")) {
                     const parts = reply.split(/The answer is[:：]?/i);
                     reply = parts.length > 1 ? parts.pop() : reply.split('\n').pop();
                 }
 
-                // 再次確保濾掉開頭殘留的英文，保留純中文答案
+                // 找第一個中文字開始顯示，避免空白或英文雜訊
                 const chineseMatch = reply.match(/[\u4e00-\u9fa5]/);
                 if (chineseMatch) {
                     reply = reply.substring(reply.indexOf(chineseMatch[0]));
@@ -80,14 +83,14 @@
 
                 chatBox.innerHTML += `
                     <div class="flex justify-start">
-                        <div class="bg-white border p-4 rounded-xl shadow-sm message-bubble text-gray-800 font-medium">
-                            ${reply.trim().replace(/\n/g, '<br>')}
+                        <div class="bg-white border p-4 rounded-xl shadow-sm message-bubble text-gray-800">
+                            ${reply ? reply.trim().replace(/\n/g, '<br>') : "主機已連線但未回傳文字，請檢查 Workspace 設定。"}
                         </div>
                     </div>
                 `;
             } catch (e) {
                 if(document.getElementById(loadingId)) document.getElementById(loadingId).remove();
-                chatBox.innerHTML += `<div class="text-red-500 text-xs p-2">連線失敗。</div>`;
+                chatBox.innerHTML += `<div class="text-red-500 text-xs p-2">API 請求出錯：${e.message}</div>`;
                 console.error(e);
             }
             chatBox.scrollTop = chatBox.scrollHeight;
