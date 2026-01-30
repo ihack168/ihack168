@@ -16,17 +16,15 @@
 
     <header class="bg-blue-900 text-white p-4 shadow-md text-center">
         <h1 class="text-xl font-bold tracking-wider">凌群社宅 AI 顧問</h1>
+        <p class="text-xs text-blue-200 mt-1">純淨回覆模式 · 已過濾 AI 思考過程</p>
     </header>
 
     <main id="chat-box" class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50"></main>
 
     <footer class="p-4 bg-white border-t shadow-inner">
         <div class="max-w-4xl mx-auto flex gap-2">
-            <input type="text" id="user-input" 
-                   class="flex-1 border border-gray-300 rounded-full px-6 py-3 outline-none shadow-sm"
-                   placeholder="請提問..."
-                   onkeypress="if(event.keyCode==13) sendMsg()">
-            <button onclick="sendMsg()" class="bg-blue-700 text-white px-8 py-3 rounded-full font-bold active:scale-95 transition-all">發送</button>
+            <input type="text" id="user-input" class="flex-1 border border-gray-300 rounded-full px-6 py-3 outline-none focus:ring-2 focus:ring-blue-500" placeholder="請輸入問題..." onkeypress="if(event.keyCode==13) sendMsg()">
+            <button onclick="sendMsg()" class="bg-blue-700 text-white px-8 py-3 rounded-full font-bold active:scale-95 transition-all shadow-md">發送</button>
         </div>
     </footer>
 
@@ -37,14 +35,15 @@
             const msg = input.value.trim();
             if (!msg) return;
 
-            chatBox.innerHTML += `<div class="flex justify-end"><div class="bg-blue-600 text-white p-3 rounded-xl">${msg}</div></div>`;
+            // 1. 顯示使用者端訊息
+            chatBox.innerHTML += `<div class="flex justify-end"><div class="bg-blue-600 text-white p-3 rounded-xl shadow-sm">${msg}</div></div>`;
             
-            // 簡化指令，避免模型過度思考導致回傳空值
-            const finalMsg = msg + " (請直接回答，不要廢話)";
+            // 簡化指令，直接用問題去問，避免模型受到太多「指令」干擾反而想太多
+            const finalMsg = msg; 
 
             input.value = '';
             const loadingId = "load-" + Date.now();
-            chatBox.innerHTML += `<div id="${loadingId}" class="text-gray-400 p-2 animate-pulse text-sm">正在查詢資料...</div>`;
+            chatBox.innerHTML += `<div id="${loadingId}" class="text-gray-400 p-2 animate-pulse text-sm">正在查詢...</div>`;
             chatBox.scrollTop = chatBox.scrollHeight;
 
             try {
@@ -60,34 +59,46 @@
                 const data = await response.json();
                 document.getElementById(loadingId).remove();
 
-                // 1. 優先抓取對話回覆
-                let reply = data.textResponse || data.content || data.response || "";
+                let reply = data.textResponse || data.content || "";
 
-                // 2. 如果回覆是空的，但有 sources，就從 sources 抓取第一段文字 (RAG 原始資料)
-                if (!reply && data.sources && data.sources.length > 0) {
-                    reply = data.sources[0].text || "找到相關文檔，但無法生成完整句子。";
+                // --- 🛡️ 加強型過濾邏輯 ---
+                
+                // 1. 如果回覆中包含 "The user is asking" 或 "My previous answer"，通常那是廢話
+                // 我們嘗試找到最後一個中文字句
+                let cleanReply = "";
+                
+                // 先檢查是否有多行，通常答案在最後一行
+                const lines = reply.trim().split('\n');
+                const lastLine = lines[lines.length - 1];
+                
+                // 如果最後一行包含大量中文，優先取最後一行
+                if (lastLine.match(/[\u4e00-\u9fa5]{5,}/)) {
+                    cleanReply = lastLine;
+                } else {
+                    // 如果最後一行沒中文，或者是英文，就從整段文字中找第一個中文字開始截斷
+                    const chineseMatch = reply.match(/[\u4e00-\u9fa5]/);
+                    if (chineseMatch) {
+                        cleanReply = reply.substring(reply.indexOf(chineseMatch[0]));
+                    } else {
+                        cleanReply = reply;
+                    }
                 }
 
-                // 3. 基礎過濾：移除 The answer is 等雜訊
-                reply = reply.replace(/The answer is[:：]?/i, "").replace(/\[CONTEXT \d+\]/g, "");
-
-                // 4. 只有當 reply 真的有東西時才嘗試「第一個中文字截取」
-                const chineseMatch = reply.match(/[\u4e00-\u9fa5]/);
-                if (chineseMatch && reply.includes("Relevant to")) { 
-                    // 只有在發現明顯雜訊時才執行截取
-                    reply = reply.substring(reply.indexOf(chineseMatch[0]));
-                }
+                // 2. 再次清除常見的思維鏈結尾字眼
+                cleanReply = cleanReply.replace(/I will provide this exact conclusion/g, "");
+                cleanReply = cleanReply.replace(/I will use a similar phrasing/g, "");
+                cleanReply = cleanReply.replace(/The answer is[:：]?/i, "");
 
                 chatBox.innerHTML += `
                     <div class="flex justify-start">
                         <div class="bg-white border p-4 rounded-xl shadow-sm message-bubble text-gray-800">
-                            ${reply.trim() || "抱歉，找不到相關答案。"}
+                            ${cleanReply.trim()}
                         </div>
                     </div>
                 `;
             } catch (e) {
                 if(document.getElementById(loadingId)) document.getElementById(loadingId).remove();
-                chatBox.innerHTML += `<div class="text-red-500 text-xs p-2">連線異常。</div>`;
+                chatBox.innerHTML += `<div class="text-red-500 text-xs p-2">連線逾時，請稍後再試。</div>`;
             }
             chatBox.scrollTop = chatBox.scrollHeight;
         }
