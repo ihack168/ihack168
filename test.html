@@ -16,7 +16,6 @@
 
     <header class="bg-blue-900 text-white p-4 shadow-md text-center">
         <h1 class="text-xl font-bold tracking-wider">凌群社宅 AI 顧問</h1>
-        <p class="text-xs text-blue-200 mt-1 italic">API 穩定連接模式</p>
     </header>
 
     <main id="chat-box" class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50"></main>
@@ -24,7 +23,7 @@
     <footer class="p-4 bg-white border-t shadow-inner">
         <div class="max-w-4xl mx-auto flex gap-2">
             <input type="text" id="user-input" 
-                   class="flex-1 border border-gray-300 rounded-full px-6 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                   class="flex-1 border border-gray-300 rounded-full px-6 py-3 outline-none shadow-sm"
                    placeholder="請提問..."
                    onkeypress="if(event.keyCode==13) sendMsg()">
             <button onclick="sendMsg()" class="bg-blue-700 text-white px-8 py-3 rounded-full font-bold active:scale-95 transition-all">發送</button>
@@ -38,14 +37,14 @@
             const msg = input.value.trim();
             if (!msg) return;
 
-            chatBox.innerHTML += `<div class="flex justify-end"><div class="bg-blue-600 text-white p-3 rounded-xl shadow-sm">${msg}</div></div>`;
+            chatBox.innerHTML += `<div class="flex justify-end"><div class="bg-blue-600 text-white p-3 rounded-xl">${msg}</div></div>`;
             
-            // 這裡保留 finalMsg 的定義，並要求簡短回答
-            const finalMsg = "請直接給出答案，不要分析。問題：" + msg;
+            // 簡化指令，避免模型過度思考導致回傳空值
+            const finalMsg = msg + " (請直接回答，不要廢話)";
 
             input.value = '';
             const loadingId = "load-" + Date.now();
-            chatBox.innerHTML += `<div id="${loadingId}" class="flex justify-start text-gray-400 p-2 animate-pulse text-sm italic">連線主機中...</div>`;
+            chatBox.innerHTML += `<div id="${loadingId}" class="text-gray-400 p-2 animate-pulse text-sm">正在查詢資料...</div>`;
             chatBox.scrollTop = chatBox.scrollHeight;
 
             try {
@@ -59,39 +58,36 @@
                 });
 
                 const data = await response.json();
-                console.log("API原始回傳內容:", data); // 在瀏覽器按 F12 可以看到這行，方便除錯
-
                 document.getElementById(loadingId).remove();
 
-                // 🚀 改進的解析邏輯：逐個嘗試 AnythingLLM 可能回傳的欄位
-                let reply = data.textResponse || data.content || data.response || (data.sources ? "找到資料但無法生成文字" : "");
-                
-                // 如果是物件格式，嘗試轉成字串
-                if (typeof reply === 'object') reply = JSON.stringify(reply);
+                // 1. 優先抓取對話回覆
+                let reply = data.textResponse || data.content || data.response || "";
 
-                // --- 🛡️ 過濾雜訊 ---
-                if (reply.includes("[CONTEXT]") || reply.includes("The answer is")) {
-                    const parts = reply.split(/The answer is[:：]?/i);
-                    reply = parts.length > 1 ? parts.pop() : reply.split('\n').pop();
+                // 2. 如果回覆是空的，但有 sources，就從 sources 抓取第一段文字 (RAG 原始資料)
+                if (!reply && data.sources && data.sources.length > 0) {
+                    reply = data.sources[0].text || "找到相關文檔，但無法生成完整句子。";
                 }
 
-                // 找第一個中文字開始顯示，避免空白或英文雜訊
+                // 3. 基礎過濾：移除 The answer is 等雜訊
+                reply = reply.replace(/The answer is[:：]?/i, "").replace(/\[CONTEXT \d+\]/g, "");
+
+                // 4. 只有當 reply 真的有東西時才嘗試「第一個中文字截取」
                 const chineseMatch = reply.match(/[\u4e00-\u9fa5]/);
-                if (chineseMatch) {
+                if (chineseMatch && reply.includes("Relevant to")) { 
+                    // 只有在發現明顯雜訊時才執行截取
                     reply = reply.substring(reply.indexOf(chineseMatch[0]));
                 }
 
                 chatBox.innerHTML += `
                     <div class="flex justify-start">
                         <div class="bg-white border p-4 rounded-xl shadow-sm message-bubble text-gray-800">
-                            ${reply ? reply.trim().replace(/\n/g, '<br>') : "主機已連線但未回傳文字，請檢查 Workspace 設定。"}
+                            ${reply.trim() || "抱歉，找不到相關答案。"}
                         </div>
                     </div>
                 `;
             } catch (e) {
                 if(document.getElementById(loadingId)) document.getElementById(loadingId).remove();
-                chatBox.innerHTML += `<div class="text-red-500 text-xs p-2">API 請求出錯：${e.message}</div>`;
-                console.error(e);
+                chatBox.innerHTML += `<div class="text-red-500 text-xs p-2">連線異常。</div>`;
             }
             chatBox.scrollTop = chatBox.scrollHeight;
         }
