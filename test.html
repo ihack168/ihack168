@@ -1,107 +1,36 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🏠 凌群社宅 AI 顧問</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>凌群社宅顧問 - AI 客服</title>
     <style>
-        #chat-box { height: calc(100vh - 160px); scrollbar-width: thin; }
-        .message-bubble { max-width: 85%; word-wrap: break-word; line-height: 1.6; }
-        #chat-box::-webkit-scrollbar { width: 4px; }
-        #chat-box::-webkit-scrollbar-thumb { background-color: #e2e8f0; border-radius: 10px; }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden; /* 防止滾動條 */
+        }
+        #dify-chatbot-container {
+            width: 100%;
+            height: 100%;
+            border: none; /* 移除 iframe 邊框 */
+        }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-900 h-screen flex flex-col">
-
-    <header class="bg-blue-900 text-white p-4 shadow-md text-center">
-        <h1 class="text-xl font-bold tracking-wider">凌群社宅 AI 顧問</h1>
-        <p class="text-xs text-blue-200 mt-1">純淨回覆模式 · 已過濾 AI 思考過程</p>
-    </header>
-
-    <main id="chat-box" class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50"></main>
-
-    <footer class="p-4 bg-white border-t shadow-inner">
-        <div class="max-w-4xl mx-auto flex gap-2">
-            <input type="text" id="user-input" class="flex-1 border border-gray-300 rounded-full px-6 py-3 outline-none focus:ring-2 focus:ring-blue-500" placeholder="請輸入問題..." onkeypress="if(event.keyCode==13) sendMsg()">
-            <button onclick="sendMsg()" class="bg-blue-700 text-white px-8 py-3 rounded-full font-bold active:scale-95 transition-all shadow-md">發送</button>
-        </div>
-    </footer>
+<body>
+    <iframe
+        id="dify-chatbot-container"
+        src="https://api.dify.ai/v1"
+        frameborder="0"
+        allowfullscreen
+    ></iframe>
 
     <script>
-        async function sendMsg() {
-            const input = document.getElementById('user-input');
-            const chatBox = document.getElementById('chat-box');
-            const msg = input.value.trim();
-            if (!msg) return;
-
-            // 1. 顯示使用者端訊息
-            chatBox.innerHTML += `<div class="flex justify-end"><div class="bg-blue-600 text-white p-3 rounded-xl shadow-sm">${msg}</div></div>`;
-            
-            // 簡化指令，直接用問題去問，避免模型受到太多「指令」干擾反而想太多
-            const finalMsg = msg; 
-
-            input.value = '';
-            const loadingId = "load-" + Date.now();
-            chatBox.innerHTML += `<div id="${loadingId}" class="text-gray-400 p-2 animate-pulse text-sm">正在查詢...</div>`;
-            chatBox.scrollTop = chatBox.scrollHeight;
-
-            try {
-                const response = await fetch("https://yearly-screens-kurt-hills.trycloudflare.com/api/v1/workspace/ihack168/chat", {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': 'Bearer BG4Q4RY-TXQ44CT-PX939QZ-8XGJRBB',
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ message: finalMsg, mode: 'chat' })
-                });
-
-                const data = await response.json();
-                document.getElementById(loadingId).remove();
-
-                let reply = data.textResponse || data.content || "";
-
-                // --- 🛡️ 加強型過濾邏輯 ---
-                
-                // 1. 如果回覆中包含 "The user is asking" 或 "My previous answer"，通常那是廢話
-                // 我們嘗試找到最後一個中文字句
-                let cleanReply = "";
-                
-                // 先檢查是否有多行，通常答案在最後一行
-                const lines = reply.trim().split('\n');
-                const lastLine = lines[lines.length - 1];
-                
-                // 如果最後一行包含大量中文，優先取最後一行
-                if (lastLine.match(/[\u4e00-\u9fa5]{5,}/)) {
-                    cleanReply = lastLine;
-                } else {
-                    // 如果最後一行沒中文，或者是英文，就從整段文字中找第一個中文字開始截斷
-                    const chineseMatch = reply.match(/[\u4e00-\u9fa5]/);
-                    if (chineseMatch) {
-                        cleanReply = reply.substring(reply.indexOf(chineseMatch[0]));
-                    } else {
-                        cleanReply = reply;
-                    }
-                }
-
-                // 2. 再次清除常見的思維鏈結尾字眼
-                cleanReply = cleanReply.replace(/I will provide this exact conclusion/g, "");
-                cleanReply = cleanReply.replace(/I will use a similar phrasing/g, "");
-                cleanReply = cleanReply.replace(/The answer is[:：]?/i, "");
-
-                chatBox.innerHTML += `
-                    <div class="flex justify-start">
-                        <div class="bg-white border p-4 rounded-xl shadow-sm message-bubble text-gray-800">
-                            ${cleanReply.trim()}
-                        </div>
-                    </div>
-                `;
-            } catch (e) {
-                if(document.getElementById(loadingId)) document.getElementById(loadingId).remove();
-                chatBox.innerHTML += `<div class="text-red-500 text-xs p-2">連線逾時，請稍後再試。</div>`;
-            }
-            chatBox.scrollTop = chatBox.scrollHeight;
-        }
+        // 你可以選擇在這裡替換 iframe 的 src，但直接在 src 屬性寫入更簡單
+        // const iframe = document.getElementById('dify-chatbot-container');
+        // iframe.src = "你的 Dify WebApp URL"; // 將這裡替換為你的 Dify WebApp URL
     </script>
 </body>
 </html>
