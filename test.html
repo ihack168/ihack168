@@ -3,43 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🏠凌群社宅AI顧問</title>
+    <title>🏠 凌群社宅 AI 顧問 (純文字版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* 讓對話視窗可以自動捲動 */
-        #chat-box {
-            height: calc(100vh - 180px);
-            scrollbar-width: thin;
-        }
-        .message-bubble {
-            max-width: 85%;
-            word-wrap: break-word;
-        }
+        #chat-box { height: calc(100vh - 160px); scrollbar-width: thin; }
+        .message-bubble { max-width: 85%; word-wrap: break-word; line-height: 1.6; }
+        #chat-box::-webkit-scrollbar { width: 4px; }
+        #chat-box::-webkit-scrollbar-thumb { background-color: #e2e8f0; border-radius: 10px; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-900 h-screen flex flex-col">
 
-    <header class="bg-blue-900 text-white p-4 shadow-md text-center">
-        <h1 class="text-xl font-bold tracking-wider">凌群社宅AI顧問</h1>
-        <p class="text-xs text-blue-200 mt-1">測試用</p>
+    <header class="bg-blue-900 text-white p-4 shadow-md text-center flex-shrink-0">
+        <h1 class="text-xl font-bold tracking-wider">凌群社宅 AI 顧問</h1>
+        <p class="text-xs text-blue-200 mt-1">純文字對話模式 · 答案直接化</p>
     </header>
 
-    <main id="chat-box" class="flex-1 overflow-y-auto p-4 space-y-4">
+    <main id="chat-box" class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
         <div class="flex justify-start">
-            <div class="bg-white border border-gray-200 p-3 rounded-2xl rounded-tl-none shadow-sm message-bubble">
-                您好！我是您的凌群社宅AI顧問。我已經準備好為您分析房地產法規、合約或物件資料。請問今天有什麼我可以幫您的？
+            <div class="bg-white border p-4 rounded-2xl rounded-tl-none shadow-sm message-bubble text-gray-700">
+                您好！我是凌群社宅 AI 顧問。我已經優化為**直接回答模式**。<br>
+                請輸入您的問題，我會直接給您答案，不再顯示冗長的分析過程。
             </div>
         </div>
     </main>
 
-    <footer class="p-4 bg-white border-t border-gray-200 shadow-inner">
-        <div class="max-w-4xl mx-auto flex gap-2">
+    <footer class="p-4 bg-white border-t shadow-inner flex-shrink-0">
+        <div class="max-w-4xl mx-auto flex gap-2 items-center">
             <input type="text" id="user-input" 
-                   class="flex-1 border border-gray-300 rounded-full px-5 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
-                   placeholder="請輸入關於社宅的問題..."
+                   class="flex-1 border border-gray-300 rounded-full px-6 py-3 focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm"
+                   placeholder="請輸入關於社宅規章或合約的問題..."
                    onkeypress="if(event.keyCode==13) sendMsg()">
-            <button onclick="sendMsg()" 
-                    class="bg-blue-700 hover:bg-blue-800 text-white font-bold px-6 py-3 rounded-full transition-all shadow-md">
+            
+            <button onclick="sendMsg()" class="bg-blue-700 hover:bg-blue-800 text-white font-bold px-8 py-3 rounded-full shadow-md active:scale-95 transition-all">
                 發送
             </button>
         </div>
@@ -53,7 +49,7 @@
             
             if (!msg) return;
 
-            // 1. 顯示使用者的訊息
+            // 1. 顯示使用者訊息
             chatBox.innerHTML += `
                 <div class="flex justify-end">
                     <div class="bg-blue-600 text-white p-3 rounded-2xl rounded-tr-none shadow-md message-bubble">
@@ -61,21 +57,16 @@
                     </div>
                 </div>
             `;
-            input.value = '';
             
-            // 2. 顯示思考中動畫
+            // 強制直接回答指令
+            const finalMsg = "【指令：請直接回答答案結論，禁止輸出任何分析過程或推理步驟。】\n\n" + msg;
+            
+            input.value = '';
             const loadingId = "loading-" + Date.now();
-            chatBox.innerHTML += `
-                <div id="${loadingId}" class="flex justify-start">
-                    <div class="bg-gray-100 text-gray-500 p-3 rounded-2xl rounded-tl-none animate-pulse">
-                        AI 正在調閱資料庫並思考中...
-                    </div>
-                </div>
-            `;
+            chatBox.innerHTML += `<div id="${loadingId}" class="flex justify-start text-gray-400 p-2 animate-pulse text-sm italic">正在檢索資料並獲取答案...</div>`;
             chatBox.scrollTop = chatBox.scrollHeight;
 
             try {
-                // 3. 呼叫你林口家裡的 AnythingLLM API
                 const response = await fetch("https://yearly-screens-kurt-hills.trycloudflare.com/api/v1/workspace/ihack168/chat", {
                     method: 'POST',
                     headers: {
@@ -83,42 +74,33 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        message: msg,
-                        mode: 'chat' // 使用 'chat' 模式會參考你上傳的 PDF 資料
+                        message: finalMsg,
+                        mode: 'chat'
                     })
                 });
 
                 const data = await response.json();
                 
-                // 移除思考中動畫
-                document.getElementById(loadingId).remove();
+                const loadingElem = document.getElementById(loadingId);
+                if (loadingElem) loadingElem.remove();
 
-                // 4. 解析回傳內容
-                // AnythingLLM 回傳格式通常在 textResponse 欄位
-                let finalReply = data.textResponse || data.content || "抱歉，目前無法取得回應，請確認電腦是否開啟。";
+                const finalReply = data.textResponse || data.content || "抱歉，目前無法獲取回覆。";
 
                 chatBox.innerHTML += `
                     <div class="flex justify-start">
-                        <div class="bg-white border border-gray-200 p-3 rounded-2xl rounded-tl-none shadow-sm message-bubble text-gray-800">
+                        <div class="bg-white border border-gray-200 p-4 rounded-2xl rounded-tl-none shadow-sm message-bubble text-gray-800 leading-relaxed">
                             ${finalReply.replace(/\n/g, '<br>')}
                         </div>
                     </div>
                 `;
             } catch (e) {
-                if(document.getElementById(loadingId)) document.getElementById(loadingId).remove();
-                chatBox.innerHTML += `
-                    <div class="flex justify-start text-red-500 text-xs italic p-2">
-                        連線異常：請確認電腦已開啟且雲端隧道 (cloudflared) 正在執行。
-                    </div>
-                `;
-                console.error("API Error:", e);
+                const loadingElem = document.getElementById(loadingId);
+                if (loadingElem) loadingElem.remove();
+                chatBox.innerHTML += `<div class="text-red-500 text-xs p-2">連線失敗，請檢查主機狀態。</div>`;
             }
             
-            // 捲動到底部
             chatBox.scrollTop = chatBox.scrollHeight;
         }
     </script>
 </body>
-
 </html>
-
