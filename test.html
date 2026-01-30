@@ -43,11 +43,11 @@
             chatBox.innerHTML += `<div class="flex justify-end"><div class="bg-blue-600 text-white p-3 rounded-2xl rounded-tr-none shadow-md"> ${msg} </div></div>`;
             
             // 強化指令
-            const finalMsg = "請「僅僅回傳答案本身」，禁止包含任何思考過程、分析步驟、或『The user is asking...』之類的描述。答案要短。問題是：" + msg;
+            const finalMsg = "請「僅僅回傳答案本身」，禁止包含任何思考過程、分析步驟，回答要精簡" + msg;
             
             input.value = '';
             const loadingId = "loading-" + Date.now();
-            chatBox.innerHTML += `<div id="${loadingId}" class="flex justify-start text-gray-400 p-2 animate-pulse text-sm italic">獲取答案中...</div>`;
+            chatBox.innerHTML += `<div id="${loadingId}" class="flex justify-start text-gray-400 p-2 animate-pulse text-sm italic">思考中...</div>`;
             chatBox.scrollTop = chatBox.scrollHeight;
 
             try {
@@ -94,3 +94,4 @@
     </script>
 </body>
 </html>
+
