@@ -14,22 +14,20 @@
 </head>
 <body class="bg-gray-50 text-gray-900 h-screen flex flex-col">
 
-    <header class="bg-blue-900 text-white p-4 shadow-md text-center flex-shrink-0">
+    <header class="bg-blue-900 text-white p-4 shadow-md text-center">
         <h1 class="text-xl font-bold tracking-wider">凌群社宅 AI 顧問</h1>
-        <p class="text-xs text-blue-200 mt-1">極簡直接模式 · 已強化回覆過濾</p>
+        <p class="text-xs text-blue-200 mt-1">純淨答案模式 (自動過濾 AI 雜音)</p>
     </header>
 
     <main id="chat-box" class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50"></main>
 
-    <footer class="p-4 bg-white border-t shadow-inner flex-shrink-0">
-        <div class="max-w-4xl mx-auto flex gap-2 items-center">
+    <footer class="p-4 bg-white border-t">
+        <div class="max-w-4xl mx-auto flex gap-2">
             <input type="text" id="user-input" 
-                   class="flex-1 border border-gray-300 rounded-full px-6 py-3 focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
-                   placeholder="請輸入問題..."
+                   class="flex-1 border border-gray-300 rounded-full px-6 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                   placeholder="請提問..."
                    onkeypress="if(event.keyCode==13) sendMsg()">
-            <button onclick="sendMsg()" class="bg-blue-700 hover:bg-blue-800 text-white font-bold px-8 py-3 rounded-full shadow-md active:scale-95 transition-all">
-                發送
-            </button>
+            <button onclick="sendMsg()" class="bg-blue-700 text-white px-8 py-3 rounded-full font-bold active:scale-95 transition-all">發送</button>
         </div>
     </footer>
 
@@ -40,14 +38,14 @@
             const msg = input.value.trim();
             if (!msg) return;
 
-            chatBox.innerHTML += `<div class="flex justify-end"><div class="bg-blue-600 text-white p-3 rounded-2xl rounded-tr-none shadow-md"> ${msg} </div></div>`;
+            chatBox.innerHTML += `<div class="flex justify-end"><div class="bg-blue-600 text-white p-3 rounded-xl shadow-sm">${msg}</div></div>`;
             
-            // 強化指令
-            const finalMsg = "請「僅僅回傳答案本身」，禁止包含任何思考過程、分析步驟，回答要精簡" + msg;
+            // 🚀 強化 Prompt，要求禁止自我解釋
+            const finalMsg = "請「只」回傳中文答案。嚴禁包含任何英文解釋、嚴禁包含自我評估、嚴禁包含思考過程。問題：" + msg;
             
             input.value = '';
-            const loadingId = "loading-" + Date.now();
-            chatBox.innerHTML += `<div id="${loadingId}" class="flex justify-start text-gray-400 p-2 animate-pulse text-sm italic">思考中...</div>`;
+            const loadingId = "load-" + Date.now();
+            chatBox.innerHTML += `<div id="${loadingId}" class="flex justify-start text-gray-400 p-2 animate-pulse text-sm">搜尋中...</div>`;
             chatBox.scrollTop = chatBox.scrollHeight;
 
             try {
@@ -63,25 +61,19 @@
                 const data = await response.json();
                 document.getElementById(loadingId).remove();
 
-                let rawReply = data.textResponse || data.content || "無法獲取回覆。";
+                let reply = data.textResponse || data.content || "";
 
-                // --- 關鍵過濾邏輯 ---
-                // 如果 AI 還是把思考過程吐出來，我們嘗試抓最後一段話，或者過濾掉特定英文字眼
-                let cleanReply = rawReply;
-                
-                // 排除常見的 AI 思考特徵
-                if (cleanReply.includes("I will provide this exact conclusion")) {
-                    cleanReply = cleanReply.split("I will provide this exact conclusion").pop();
-                } else if (cleanReply.includes("The user is asking")) {
-                    // 如果出現這類字眼，通常答案就在最後一段
-                    const lines = cleanReply.trim().split("\n");
-                    cleanReply = lines[lines.length - 1];
+                // --- 🛡️ 終極過濾：切斷開頭所有英文 ---
+                // 邏輯：找到第一個中文字的位置，並從那裡開始截取
+                const chineseMatch = reply.match(/[\u4e00-\u9fa5]/);
+                if (chineseMatch) {
+                    reply = reply.substring(reply.indexOf(chineseMatch[0]));
                 }
 
                 chatBox.innerHTML += `
                     <div class="flex justify-start">
-                        <div class="bg-white border border-gray-200 p-4 rounded-2xl rounded-tl-none shadow-sm message-bubble text-gray-800 font-medium">
-                            ${cleanReply.replace(/\n/g, '<br>')}
+                        <div class="bg-white border p-4 rounded-xl shadow-sm message-bubble text-gray-800">
+                            ${reply.replace(/\n/g, '<br>')}
                         </div>
                     </div>
                 `;
@@ -94,4 +86,3 @@
     </script>
 </body>
 </html>
-
