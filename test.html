@@ -5,33 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>凌群社宅顧問 - AI 客服</title>
     <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden; /* 防止滾動條 */
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; font-family: sans-serif; }
+        /* 增加一個專業頂欄 */
+        .top-bar {
+            background: #004a99;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-size: 1.1em;
+            font-weight: bold;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
         }
-        #dify-chatbot-container {
+        iframe {
             width: 100%;
-            height: 100%;
-            border: none; /* 移除 iframe 邊框 */
+            height: calc(100vh - 54px);
+            border: none;
         }
     </style>
 </head>
 <body>
-    <iframe
-        id="dify-chatbot-container"
-        src="https://udify.app/chatbot/3TJ7Sx2bT1XT6dwI"
-        frameborder="0"
-        allowfullscreen
-    ></iframe>
-
-    <script>
-        // 你可以選擇在這裡替換 iframe 的 src，但直接在 src 屬性寫入更簡單
-        // const iframe = document.getElementById('dify-chatbot-container');
-        // iframe.src = "你的 Dify WebApp URL"; // 將這裡替換為你的 Dify WebApp URL
-    </script>
+    <div class="top-bar">🏠 凌群社會住宅 - 24H 智能顧問</div>
+    <iframe src="https://udify.app/chatbot/3TJ7Sx2bT1XT6dwI" allow="microphone; camera"></iframe>
 </body>
 </html>
-
