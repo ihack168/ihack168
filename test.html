@@ -1,7 +1,31 @@
-<iframe
-    id="dify-chatbot-container"
-    src="https://udify.app/chatbot/3TJ7Sx2bT1XT6dwI"
-    frameborder="0"
-    allow="microphone; camera; clipboard-read; clipboard-write; geolocation"
-    sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-forms allow-modals"
-></iframe>
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>凌群社宅顧問 - AI 客服</title>
+    <style>
+        /* 移除所有邊距，確保 iframe 撐滿全螢幕 */
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        #dify-chatbot-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+    <iframe
+        id="dify-chatbot-iframe"
+        src="https://udify.app/chatbot/3TJ7Sx2bT1XT6dwI"
+        allow="microphone; camera; clipboard-read; clipboard-write"
+        allowfullscreen>
+    </iframe>
+</body>
+</html>
